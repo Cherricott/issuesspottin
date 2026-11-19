@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>Review Issue Spotting</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">BỘ CÂU HỎI 600 CÂU</p>
+      <h1>Review Issue Spotting</h1>
+    </div>
+    <div class="header-actions">
+      <button id="exportBtn" class="button secondary" type="button">Tải feedback (.jsonl)</button>
+      <button id="reloadBtn" class="button secondary" type="button">Làm mới 100 câu</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="reviewer-panel" aria-label="Thông tin người review">
+      <label for="reviewer">Tên người review</label>
+      <input id="reviewer" type="text" maxlength="80" autocomplete="name" placeholder="Ví dụ: Nguyen Van A">
+      <label for="accessCode">Mã truy cập (nếu backend có yêu cầu)</label>
+      <input id="accessCode" type="password" autocomplete="off" placeholder="Để trống nếu không có mã">
+      <button id="startBtn" class="button primary" type="button">Bắt đầu</button>
+    </section>
+
+    <section class="status-bar">
+      <div id="status" class="status" role="status">Đang tải dữ liệu...</div>
+      <div class="progress-wrap" aria-label="Tiến độ">
+        <div id="progressText">0 / 100 đã review</div>
+        <div class="progress"><div id="progressBar"></div></div>
+      </div>
+    </section>
+
+    <section id="cards" class="cards" aria-live="polite"></section>
+  </main>
+
+  <template id="cardTemplate">
+    <article class="card">
+      <div class="card-head">
+        <div>
+          <span class="badge category"></span>
+          <span class="badge level"></span>
+        </div>
+        <span class="question-id"></span>
+      </div>
+      <h2 class="question"></h2>
+      <div class="answer-block">
+        <h3>Đáp án mẫu</h3>
+        <ol class="issues"></ol>
+      </div>
+      <fieldset class="verdicts">
+        <legend>Đánh giá chung</legend>
+        <label><input type="radio" name="verdict" value="correct"> Đúng</label>
+        <label><input type="radio" name="verdict" value="partial"> Đúng một phần</label>
+        <label><input type="radio" name="verdict" value="wrong"> Sai</label>
+      </fieldset>
+      <div class="issue-marks">
+        <h3>Đánh giá từng issue</h3>
+        <div class="issue-mark-list"></div>
+      </div>
+      <label>Câu trả lời đề xuất
+        <textarea class="suggested" rows="4" placeholder="Viết câu trả lời tốt hơn (nếu cần)"></textarea>
+      </label>
+      <label>Ghi chú
+        <textarea class="note" rows="3" placeholder="Ghi chú thêm"></textarea>
+      </label>
+      <button class="button primary save" type="button">Lưu đánh giá</button>
+      <span class="saved-state"></span>
+    </article>
+  </template>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
