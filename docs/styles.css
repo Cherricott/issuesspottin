@@ -119,8 +119,8 @@ main { max-width: 1680px; margin: 0 auto; padding: 24px; }
 .badge.level { background: #f2f4f7; color: #475467; }
 .question-id { color: #98a2b3; font-size: 12px; }
 /* Chia đôi: đề bài bên trái, sửa issue bên phải */
-.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
-.pane { display: flex; flex-direction: column; min-width: 0; max-height: calc(100vh - 260px); min-height: 320px; }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; height: calc(100vh - 260px); min-height: 360px; }
+.pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .pane-issues { overflow: auto; padding-right: 4px; }
 .pane-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-bottom: 8px; }
 .pane-head h3 { margin: 0; font-size: 15px; }
@@ -133,17 +133,23 @@ main { max-width: 1680px; margin: 0 auto; padding: 24px; }
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding: 14px 16px;
+  padding: 16px 20px;
   background: #fafbfd;
   border: 1px solid #e6eaf1;
   border-radius: 8px;
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   font-size: 15px;
-  line-height: 1.65;
+  line-height: 1.7;
+  text-align: justify;
 }
+.facts .para { margin: 0 0 .7em; }
+.facts .para:last-child { margin-bottom: 0; }
 .issues-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin-bottom: 8px; }
 .issues-head h3 { margin: 0; font-size: 15px; }
+.issues-head { align-items: center; }
+.issues-hint { flex-basis: 100%; }
+.hl-btn.copied { background: var(--success-bg); color: var(--success); border-color: #9bd8ad; }
 .issue-list, .added-list { display: grid; gap: 10px; }
 .added-list:not(:empty) { margin-top: 10px; }
 .issue-box {
@@ -200,8 +206,7 @@ textarea:focus { outline: 2px solid #b8c9f3; border-color: var(--primary); }
 .all-done { margin: 0 0 14px; padding: 16px; text-align: center; color: var(--success); background: var(--success-bg); border-radius: 10px; font-weight: 700; }
 
 @media (max-width: 900px) {
-  .split { grid-template-columns: minmax(0, 1fr); }
-  .pane { max-height: none; min-height: 0; }
+  .split { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; }
   .pane-issues { overflow: visible; padding-right: 0; }
   .facts { max-height: 60vh; }
 }

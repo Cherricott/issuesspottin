@@ -3,7 +3,7 @@
 const CFG = Object.assign({ AUTOSAVE_SECONDS: 60, FALLBACK_DOWNLOAD_MINUTES: 5 }, window.REVIEW_CONFIG || {});
 const LS_ID = "issueReview.v2.id";
 const lsDataKey = name => `issueReview.v2.feedback.${name}`;
-const lsHlKey = name => `issueReview.v2.highlight.${name}`;
+const lsHlKey = name => `issueReview.v3.highlight.${name}`;
 const FS_OK = typeof window.showSaveFilePicker === "function" && typeof window.showOpenFilePicker === "function";
 const FILE_TYPES = [{ description: "Feedback (.jsonl)", accept: { "text/plain": [".jsonl", ".json", ".txt"] } }];
 
@@ -219,23 +219,80 @@ function cutRanges(ranges, s, e) {
   return out;
 }
 
+const LIST_START = /^([-+•*–]|\(?[0-9]{1,3}[.)]|\(?[a-zđ][.)])\s/i;
+
+/**
+ * Đề lấy từ PDF nên bị xuống dòng cứng giữa câu. Nối các dòng bị ngắt thành đoạn văn liền mạch,
+ * chỉ giữ ngắt đoạn ở dòng trống, dòng ngắn (cuối đoạn / tiêu đề) và đầu mục liệt kê.
+ */
+function reflow(raw) {
+  const lines = String(raw || "").split(/\r?\n/).map(l => l.replace(/[ \t ]+/g, " ").trim());
+  const lens = lines.filter(Boolean).map(l => l.length).sort((a, b) => a - b);
+  const typical = lens.length >= 3 ? lens[Math.floor(lens.length * 0.8)] : Infinity;
+  const isPageNo = l => /^\d{1,3}$/.test(l);
+  const paras = [];
+  let cur = "";
+  let prevShort = false;
+  lines.forEach((line, i) => {
+    if (isPageNo(line)) return;     // số trang PDF: bỏ, câu bị cắt ngang được nối tiếp như dòng thường
+    if (!line) {
+      // dòng trống quanh số trang là ngắt trang, không phải ngắt đoạn
+      let a = i, b = i;
+      while (a > 0 && (!lines[a - 1] || isPageNo(lines[a - 1]))) a -= 1;
+      while (b < lines.length - 1 && (!lines[b + 1] || isPageNo(lines[b + 1]))) b += 1;
+      if (lines.slice(a, b + 1).some(isPageNo)) return;
+      if (cur) paras.push(cur);
+      cur = "";
+      return;
+    }
+    const breakBefore = cur && (prevShort || (LIST_START.test(line) && /[.:;!?…”"]$/.test(cur)));
+    if (breakBefore) {
+      paras.push(cur);
+      cur = line;
+    } else {
+      cur = cur ? `${cur} ${line}` : line;
+    }
+    prevShort = line.length < typical * 0.7;
+  });
+  if (cur) paras.push(cur);
+  return paras;
+}
+
+function factsParas(q) {
+  if (!q.paras) q.paras = reflow(q.input);
+  return q.paras;
+}
+
+function factsText(q) { return factsParas(q).join("\n"); }
+
+/** Mỗi đoạn là một khối riêng; ký tự "\n" cuối khối giữ cho vị trí highlight khớp với factsText(). */
 function renderFacts(card) {
   const q = qById.get(card.dataset.id);
   const el = $(".facts", card);
-  const text = q.input || "";
+  const ranges = highlights[q.id] || [];
+  const paras = factsParas(q);
   const frag = document.createDocumentFragment();
-  let pos = 0;
-  (highlights[q.id] || []).forEach(([s, e]) => {
-    s = Math.max(pos, Math.min(s, text.length));
-    e = Math.min(e, text.length);
-    if (e <= s) return;
-    if (s > pos) frag.append(text.slice(pos, s));
-    const mark = document.createElement("mark");
-    mark.textContent = text.slice(s, e);
-    frag.append(mark);
-    pos = e;
+  let start = 0;
+  paras.forEach((para, k) => {
+    const end = start + para.length;
+    const div = document.createElement("div");
+    div.className = "para";
+    let pos = start;
+    ranges.forEach(([s, e]) => {
+      s = Math.max(s, pos);
+      e = Math.min(e, end);
+      if (e <= s) return;
+      if (s > pos) div.append(para.slice(pos - start, s - start));
+      const mark = document.createElement("mark");
+      mark.textContent = para.slice(s - start, e - start);
+      div.append(mark);
+      pos = e;
+    });
+    if (pos < end) div.append(para.slice(pos - start));
+    if (k < paras.length - 1) div.append("\n");
+    frag.append(div);
+    start = end + 1;
   });
-  if (pos < text.length) frag.append(text.slice(pos));
   el.replaceChildren(frag);
 }
 
@@ -281,6 +338,41 @@ function clearHighlight(card) {
   window.getSelection().removeAllRanges();
   saveHighlights();
   renderFacts(card);
+}
+
+// ------------------------------------------------------------------ copy
+async function copyText(text, btn) {
+  let ok = false;
+  try {
+    await navigator.clipboard.writeText(text);
+    ok = true;
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.append(ta);
+    ta.select();
+    try { ok = document.execCommand("copy"); } catch { ok = false; }
+    ta.remove();
+  }
+  if (!ok) {
+    notice("Không copy được, hãy bôi đen rồi nhấn Ctrl+C.", true);
+    return;
+  }
+  const label = btn.dataset.label || btn.textContent;
+  btn.dataset.label = label;
+  btn.textContent = "Đã copy ✓";
+  btn.classList.add("copied");
+  clearTimeout(btn._copyTimer);
+  btn._copyTimer = setTimeout(() => {
+    btn.textContent = label;
+    btn.classList.remove("copied");
+  }, 1500);
+}
+
+function issuesText(q) {
+  return q.issues.map((issue, idx) => `${idx + 1}. ${issue}`).join("\n");
 }
 
 // ------------------------------------------------------------------ giao diện thẻ câu hỏi
@@ -813,6 +905,14 @@ function bindEvents() {
   cards.addEventListener("click", async event => {
     const card = event.target.closest(".card");
     if (!card) return;
+    if (event.target.closest(".copy-input")) {
+      copyText(factsText(qById.get(card.dataset.id)), event.target.closest(".copy-input"));
+      return;
+    }
+    if (event.target.closest(".copy-issues")) {
+      copyText(issuesText(qById.get(card.dataset.id)), event.target.closest(".copy-issues"));
+      return;
+    }
     if (event.target.closest(".hl-add")) {
       addHighlight(card);
       return;
