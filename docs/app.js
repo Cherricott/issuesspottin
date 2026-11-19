@@ -3,6 +3,7 @@
 const CFG = Object.assign({ AUTOSAVE_SECONDS: 60, FALLBACK_DOWNLOAD_MINUTES: 5 }, window.REVIEW_CONFIG || {});
 const LS_ID = "issueReview.v2.id";
 const lsDataKey = name => `issueReview.v2.feedback.${name}`;
+const lsHlKey = name => `issueReview.v2.highlight.${name}`;
 const FS_OK = typeof window.showSaveFilePicker === "function" && typeof window.showOpenFilePicker === "function";
 const FILE_TYPES = [{ description: "Feedback (.jsonl)", accept: { "text/plain": [".jsonl", ".json", ".txt"] } }];
 
@@ -16,6 +17,7 @@ let reviewer = null;          // tên người review (lấy từ dữ liệu đ
 let questions = [];           // câu được giao, đúng thứ tự cố định
 let qById = new Map();
 let records = {};             // id câu -> bản ghi feedback
+let highlights = {};          // id câu -> [[đầu, cuối], ...] vị trí ký tự được highlight trong đề
 let fileHandle = null;        // file đang ghi đè (Chrome/Edge)
 let pendingHandle = null;     // file của lần trước, chờ người dùng cho phép ghi tiếp
 let changeVersion = 0;        // tăng mỗi lần dữ liệu đổi
@@ -176,6 +178,111 @@ function touched() {
   updateFileState();
 }
 
+// ------------------------------------------------------------------ highlight đề bài
+function loadHighlights() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(lsHlKey(reviewer)) || "{}");
+    return raw && typeof raw === "object" ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveHighlights() {
+  try {
+    localStorage.setItem(lsHlKey(reviewer), JSON.stringify(highlights));
+  } catch (err) {
+    notice(`Không lưu được highlight: ${err.message}`, true);
+  }
+}
+
+/** Gộp các đoạn chồng / liền nhau, sắp theo vị trí. */
+function mergeRanges(ranges) {
+  const out = [];
+  ranges.slice().sort((a, b) => a[0] - b[0]).forEach(([s, e]) => {
+    if (e <= s) return;
+    const last = out[out.length - 1];
+    if (last && s <= last[1]) last[1] = Math.max(last[1], e);
+    else out.push([s, e]);
+  });
+  return out;
+}
+
+/** Trừ đoạn [s, e) khỏi danh sách đoạn. */
+function cutRanges(ranges, s, e) {
+  const out = [];
+  ranges.forEach(([a, b]) => {
+    if (b <= s || a >= e) { out.push([a, b]); return; }
+    if (a < s) out.push([a, s]);
+    if (b > e) out.push([e, b]);
+  });
+  return out;
+}
+
+function renderFacts(card) {
+  const q = qById.get(card.dataset.id);
+  const el = $(".facts", card);
+  const text = q.input || "";
+  const frag = document.createDocumentFragment();
+  let pos = 0;
+  (highlights[q.id] || []).forEach(([s, e]) => {
+    s = Math.max(pos, Math.min(s, text.length));
+    e = Math.min(e, text.length);
+    if (e <= s) return;
+    if (s > pos) frag.append(text.slice(pos, s));
+    const mark = document.createElement("mark");
+    mark.textContent = text.slice(s, e);
+    frag.append(mark);
+    pos = e;
+  });
+  if (pos < text.length) frag.append(text.slice(pos));
+  el.replaceChildren(frag);
+}
+
+/** Vị trí ký tự (theo nội dung chữ của đề) của đoạn đang bôi đen trong .facts, hoặc null. */
+function selectionOffsets(factsEl) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+  const range = sel.getRangeAt(0);
+  // bôi đen tràn ra ngoài đề thì chỉ lấy phần nằm trong đề
+  if (!range.intersectsNode(factsEl)) return null;
+  const offsetOf = (node, off) => {
+    const r = document.createRange();
+    r.setStart(factsEl, 0);
+    r.setEnd(node, off);
+    return r.toString().length;
+  };
+  const total = factsEl.textContent.length;
+  const s = factsEl.contains(range.startContainer) ? offsetOf(range.startContainer, range.startOffset) : 0;
+  const e = factsEl.contains(range.endContainer) ? offsetOf(range.endContainer, range.endOffset) : total;
+  return e > s ? [s, e] : null;
+}
+
+function addHighlight(card) {
+  const facts = $(".facts", card);
+  const r = selectionOffsets(facts);
+  if (!r) {
+    notice("Bôi đen một đoạn trong đề bài rồi bấm \"Highlight\".");
+    return;
+  }
+  const id = card.dataset.id;
+  highlights[id] = mergeRanges([...(highlights[id] || []), r]);
+  window.getSelection().removeAllRanges();
+  saveHighlights();
+  renderFacts(card);
+}
+
+function clearHighlight(card) {
+  const id = card.dataset.id;
+  if (!highlights[id] || !highlights[id].length) return;
+  const r = selectionOffsets($(".facts", card));
+  highlights[id] = r ? cutRanges(highlights[id], r[0], r[1]) : [];
+  if (!highlights[id].length) delete highlights[id];
+  window.getSelection().removeAllRanges();
+  saveHighlights();
+  renderFacts(card);
+}
+
 // ------------------------------------------------------------------ giao diện thẻ câu hỏi
 function addIssueBox(card, text = "") {
   const box = document.createElement("div");
@@ -210,7 +317,6 @@ function renderCards() {
     $(".category", frag).textContent = CAT_LABEL[q.cat] || q.cat;
     $(".level", frag).textContent = LEVEL_LABEL[q.lvl] || q.lvl;
     $(".question-id", frag).textContent = `Mã câu ${q.id}`;
-    $(".facts", frag).textContent = q.input;
     const list = $(".issue-list", frag);
     q.issues.forEach((issue, idx) => {
       const box = document.createElement("div");
@@ -225,7 +331,7 @@ function renderCards() {
     });
     wrap.append(frag);
   });
-  $$(".card", wrap).forEach(c => { c.hidden = true; });
+  $$(".card", wrap).forEach(c => { c.hidden = true; renderFacts(c); });
   questions.forEach(q => fillCard(cardOf(q.id), records[q.id]));
   updateProgress();
 }
@@ -306,6 +412,7 @@ function show(i, dir = 0) {
   $(".next", card).textContent = current === questions.length - 1 ? "Lưu & kết thúc" : "Lưu & tiếp →";
   $$("textarea", card).forEach(autoGrow);
   $(".facts", card).scrollTop = 0;
+  $(".pane-issues", card).scrollTop = 0;
   if (dir) {
     card.style.setProperty("--dx", dir > 0 ? "16px" : "-16px");
     card.classList.remove("flash-enter");
@@ -622,6 +729,7 @@ async function login(id, silent) {
   questions = payload.questions.map(q => ({ ...q, id: String(q.id) }));
   qById = new Map(questions.map(q => [q.id, q]));
   records = loadLocal();
+  highlights = loadHighlights();
 
   $("#login").hidden = true;
   $("#workspace").hidden = false;
@@ -686,6 +794,17 @@ function bindEvents() {
   });
 
   const cards = $("#cards");
+  // giữ nguyên đoạn đang bôi đen khi bấm nút highlight
+  cards.addEventListener("mousedown", event => {
+    if (event.target.closest(".hl-btn")) event.preventDefault();
+  });
+  document.addEventListener("keydown", event => {
+    if (!reviewer || !event.altKey || event.key.toLowerCase() !== "h") return;
+    const card = $$("#cards .card")[current];
+    if (!card) return;
+    event.preventDefault();
+    addHighlight(card);
+  });
   cards.addEventListener("input", event => {
     if (event.target.tagName === "TEXTAREA") autoGrow(event.target);
     const card = event.target.closest(".card");
@@ -694,6 +813,14 @@ function bindEvents() {
   cards.addEventListener("click", async event => {
     const card = event.target.closest(".card");
     if (!card) return;
+    if (event.target.closest(".hl-add")) {
+      addHighlight(card);
+      return;
+    }
+    if (event.target.closest(".hl-clear")) {
+      clearHighlight(card);
+      return;
+    }
     if (event.target.closest(".add-issue")) {
       addIssueBox(card).focus();
       return;

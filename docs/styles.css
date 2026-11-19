@@ -35,7 +35,7 @@ body {
 .who strong { font-size: 16px; }
 .link-button { background: none; border: 0; color: #aeb9d1; text-decoration: underline; cursor: pointer; font: inherit; font-size: 13px; padding: 0; }
 .link-button:hover { color: white; }
-main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+main { max-width: 1680px; margin: 0 auto; padding: 24px; }
 
 /* Đăng nhập */
 .login-panel {
@@ -118,11 +118,22 @@ main { max-width: 1100px; margin: 0 auto; padding: 24px; }
 .badge.category { background: #e8efff; color: #254aa0; }
 .badge.level { background: #f2f4f7; color: #475467; }
 .question-id { color: #98a2b3; font-size: 12px; }
+/* Chia đôi: đề bài bên trái, sửa issue bên phải */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.pane { display: flex; flex-direction: column; min-width: 0; max-height: calc(100vh - 260px); min-height: 320px; }
+.pane-issues { overflow: auto; padding-right: 4px; }
+.pane-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-bottom: 8px; }
+.pane-head h3 { margin: 0; font-size: 15px; }
+.hl-tools { display: flex; gap: 6px; }
+.hl-btn { min-height: 32px; padding: 5px 11px; font-size: 13px; }
+.hl-add { background: #fde68a; color: #5c4400; border: 1px solid #f2c94c; }
+.hl-add:hover { background: #fcd34d; }
+.facts mark { background: #fde68a; color: inherit; border-radius: 2px; padding: 0 1px; }
 .facts {
-  max-height: 55vh;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   padding: 14px 16px;
-  margin-bottom: 18px;
   background: #fafbfd;
   border: 1px solid #e6eaf1;
   border-radius: 8px;
@@ -187,6 +198,13 @@ textarea:focus { outline: 2px solid #b8c9f3; border-color: var(--primary); }
 .saved-state.warn { color: var(--warn); }
 .saved-state.error { color: var(--danger); }
 .all-done { margin: 0 0 14px; padding: 16px; text-align: center; color: var(--success); background: var(--success-bg); border-radius: 10px; font-weight: 700; }
+
+@media (max-width: 900px) {
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .pane { max-height: none; min-height: 0; }
+  .pane-issues { overflow: visible; padding-right: 0; }
+  .facts { max-height: 60vh; }
+}
 
 @media (max-width: 700px) {
   .topbar { align-items: flex-start; flex-direction: column; gap: 8px; }

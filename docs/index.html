@@ -61,17 +61,30 @@
         </div>
         <span class="question-id"></span>
       </div>
-      <div class="facts"></div>
-      <div class="issues-head">
-        <h3>Issue trong đáp án</h3>
-        <p class="hint">Ô để trống = issue đúng. Issue sai thì viết lại issue đúng vào ô.</p>
+      <div class="split">
+        <section class="pane pane-input" aria-label="Đề bài">
+          <div class="pane-head">
+            <h3>Đề bài</h3>
+            <div class="hl-tools">
+              <button class="button hl-btn hl-add" type="button" title="Bôi đen chữ trong đề rồi bấm (phím tắt Alt+H)">Highlight</button>
+              <button class="button secondary hl-btn hl-clear" type="button" title="Bỏ highlight ở đoạn đang bôi đen, hoặc bỏ hết nếu không bôi đen gì">Bỏ highlight</button>
+            </div>
+          </div>
+          <div class="facts"></div>
+        </section>
+        <section class="pane pane-issues" aria-label="Sửa issue">
+          <div class="issues-head">
+            <h3>Issue trong đáp án</h3>
+            <p class="hint">Ô để trống = issue đúng. Issue sai thì viết lại issue đúng vào ô.</p>
+          </div>
+          <div class="issue-list"></div>
+          <div class="added-list"></div>
+          <button class="button ghost add-issue" type="button">+ Thêm issue</button>
+          <label class="note-label">Ghi chú (không bắt buộc)
+            <textarea class="note" rows="2" placeholder="Ghi chú thêm nếu cần"></textarea>
+          </label>
+        </section>
       </div>
-      <div class="issue-list"></div>
-      <div class="added-list"></div>
-      <button class="button ghost add-issue" type="button">+ Thêm issue</button>
-      <label class="note-label">Ghi chú (không bắt buộc)
-        <textarea class="note" rows="2" placeholder="Ghi chú thêm nếu cần"></textarea>
-      </label>
       <div class="card-foot">
         <button class="button secondary back" type="button">← Quay lại</button>
         <span class="saved-state"></span>
