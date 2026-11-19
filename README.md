@@ -33,18 +33,14 @@ Script chia số câu theo tỉ lệ category gốc, và trong mỗi category l�
 Nếu sửa `apps_script.gs` sau khi đã deploy: vào **Deploy → Manage deployments → Edit → Version: New version → Deploy**. URL không đổi.
 
 ## 3. Đưa lên GitHub Pages
-```bash
-git init && git add . && git commit -m "review site"
-git branch -M main
-git remote add origin https://github.com/<user>/<repo>.git
-git push -u origin main
-```
-Vào repo trên GitHub, chọn **Settings → Pages → Build and deployment**:
-- Source: **Deploy from a branch**
-- Branch: **main**
-- Thư mục: **/docs**
+Repository đã có workflow `.github/workflows/pages.yml`. Chỉ cần:
 
-Bấm Save. Sau khoảng 1 phút web chạy ở `https://<user>.github.io/<repo>/`.
+1. Đẩy code lên nhánh `main`.
+2. Vào repo trên GitHub, chọn **Settings → Pages → Build and deployment**.
+3. Chọn **Source: GitHub Actions**.
+4. Vào **Actions**, chạy hoặc chờ workflow **Deploy GitHub Pages** hoàn tất.
+
+Website sẽ chạy tại `https://<user>.github.io/<repo>/`.
 
 ## Feedback
 - Mỗi lần bấm "Lưu" thêm một dòng vào sheet `feedback` (giữ lịch sử).
