@@ -4,39 +4,52 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#111827">
+  <meta name="robots" content="noindex">
   <title>Review Issue Spotting</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="topbar">
-    <div>
-      <p class="eyebrow">BỘ CÂU HỎI 600 CÂU</p>
-      <h1>Review Issue Spotting</h1>
-    </div>
-    <div class="header-actions">
-      <button id="exportBtn" class="button secondary" type="button">Tải feedback (.jsonl)</button>
-      <button id="reloadBtn" class="button secondary" type="button">Làm mới 100 câu</button>
+    <h1>Review Issue Spotting</h1>
+    <div id="who" class="who" hidden>
+      <span class="who-label">Người review</span>
+      <strong id="whoName"></strong>
+      <button id="logoutBtn" class="link-button" type="button">Đổi ID</button>
     </div>
   </header>
 
   <main>
-    <section class="reviewer-panel" aria-label="Thông tin người review">
-      <label for="reviewer">Tên người review</label>
-      <input id="reviewer" type="text" maxlength="80" autocomplete="name" placeholder="Ví dụ: Nguyen Van A">
-      <label for="accessCode">Mã truy cập (nếu backend có yêu cầu)</label>
-      <input id="accessCode" type="password" autocomplete="off" placeholder="Để trống nếu không có mã">
-      <button id="startBtn" class="button primary" type="button">Bắt đầu</button>
+    <!-- Đăng nhập -->
+    <section id="login" class="login-panel">
+      <h2>Nhập ID để bắt đầu</h2>
+      <p class="hint">Mỗi người có một ID riêng và một bộ câu cố định.</p>
+      <form id="loginForm" autocomplete="off">
+        <input id="idInput" type="password" placeholder="ID của bạn" aria-label="ID người review" spellcheck="false">
+        <button id="loginBtn" class="button primary" type="submit">Vào</button>
+      </form>
+      <p id="loginMsg" class="login-msg" role="alert"></p>
     </section>
 
-    <section class="status-bar">
-      <div id="status" class="status" role="status">Đang tải dữ liệu...</div>
-      <div class="progress-wrap" aria-label="Tiến độ">
-        <div id="progressText">0 / 100 đã review</div>
-        <div class="progress"><div id="progressBar"></div></div>
+    <!-- Làm việc -->
+    <section id="workspace" hidden>
+      <div class="toolbar" role="region" aria-label="Lưu và mở file feedback">
+        <div class="file-state">
+          <span id="fileDot" class="dot"></span>
+          <span id="fileText">Chưa chọn file lưu</span>
+        </div>
+        <div class="toolbar-actions">
+          <button id="pickFileBtn" class="button secondary" type="button">Chọn file lưu</button>
+          <button id="openFileBtn" class="button secondary" type="button">Mở file để làm tiếp</button>
+          <button id="downloadBtn" class="button secondary" type="button">Tải file feedback</button>
+          <button id="nextBtn" class="button primary" type="button">Câu chưa làm tiếp theo ↓</button>
+        </div>
+        <div class="progress" aria-hidden="true"><div id="progressBar"></div></div>
+        <input id="fileInput" type="file" accept=".jsonl,.json,.txt,application/json" hidden>
       </div>
+      <p id="notice" class="notice" role="status"></p>
+      <div id="cards" class="cards"></div>
+      <p id="allDone" class="all-done" hidden>Bạn đã lưu tất cả các câu. Cảm ơn bạn!</p>
     </section>
-
-    <section id="cards" class="cards" aria-live="polite"></section>
   </main>
 
   <template id="cardTemplate">
@@ -48,29 +61,21 @@
         </div>
         <span class="question-id"></span>
       </div>
-      <h2 class="question"></h2>
-      <div class="answer-block">
-        <h3>Đáp án mẫu</h3>
-        <ol class="issues"></ol>
+      <div class="facts"></div>
+      <div class="issues-head">
+        <h3>Issue trong đáp án</h3>
+        <p class="hint">Ô để trống = issue đúng. Issue sai thì viết lại issue đúng vào ô.</p>
       </div>
-      <fieldset class="verdicts">
-        <legend>Đánh giá chung</legend>
-        <label><input type="radio" name="verdict" value="correct"> Đúng</label>
-        <label><input type="radio" name="verdict" value="partial"> Đúng một phần</label>
-        <label><input type="radio" name="verdict" value="wrong"> Sai</label>
-      </fieldset>
-      <div class="issue-marks">
-        <h3>Đánh giá từng issue</h3>
-        <div class="issue-mark-list"></div>
+      <div class="issue-list"></div>
+      <div class="added-list"></div>
+      <button class="button ghost add-issue" type="button">+ Thêm issue</button>
+      <label class="note-label">Ghi chú (không bắt buộc)
+        <textarea class="note" rows="2" placeholder="Ghi chú thêm nếu cần"></textarea>
+      </label>
+      <div class="card-foot">
+        <button class="button primary save" type="button">Lưu câu này</button>
+        <span class="saved-state"></span>
       </div>
-      <label>Câu trả lời đề xuất
-        <textarea class="suggested" rows="4" placeholder="Viết câu trả lời tốt hơn (nếu cần)"></textarea>
-      </label>
-      <label>Ghi chú
-        <textarea class="note" rows="3" placeholder="Ghi chú thêm"></textarea>
-      </label>
-      <button class="button primary save" type="button">Lưu đánh giá</button>
-      <span class="saved-state"></span>
     </article>
   </template>
 

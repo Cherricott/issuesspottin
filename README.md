@@ -1,58 +1,75 @@
-# Review Issue Spotting (600 câu)
+# Review Issue Spotting
 
-Web tĩnh chạy trên GitHub Pages để review đáp án issue spotting. Mỗi lần mở trang sẽ hiện 100 câu ngẫu nhiên trong 600 câu, ưu tiên những câu người review chưa góp ý. Feedback được ghi vào một Google Sheet qua Google Apps Script.
+Web tĩnh chạy trên GitHub Pages để review đáp án issue spotting. Mỗi người review đăng nhập bằng ID riêng và chỉ thấy bộ câu cố định được giao cho mình. Sai ID thì không vào được, và trang không hiện tổng số câu.
 
 ```
-build_site.py               chọn 600 câu từ mcq.jsonl -> issue_open_ended_600.jsonl + docs/data.json
-apps_script.gs              code backend dán vào Google Apps Script
-docs/index.html             trang web
-docs/config.js              chỗ dán URL của Apps Script
-docs/data.json              dữ liệu 600 câu (đã tạo sẵn, seed 42)
-issue_open_ended_600.jsonl  600 câu dạng {"input", "expected_answer"}
+build_site.py               bớt câu HNGĐ, chia câu cho từng người, mã hoá dữ liệu vào docs/
+reviewers.json              tên + ID + danh sách câu của từng người (KHÔNG đẩy lên GitHub)
+data/questions_600.json     bộ 600 câu gốc (id, category, mức độ, input, issues)
+issue_open_ended.jsonl      bộ câu đang review dạng {"input", "expected_answer"}
+docs/index.html, app.js     trang web
+docs/config.js              chỉnh thời gian tự lưu
+docs/site.json, docs/r/     dữ liệu đã mã hoá theo ID của từng người (do build_site.py tạo)
 ```
 
-## 1. (Tuỳ chọn) Tạo lại bộ 600 câu
-Đặt `mcq.jsonl` cạnh `build_site.py`, rồi sửa khối CẤU HÌNH nếu cần (đường dẫn, `N_TOTAL`, `SEED`):
+## 1. Đặt tên người review và dựng dữ liệu
 ```bash
+pip install cryptography        # chỉ cần 1 lần
 python build_site.py
 ```
-Script chia số câu theo tỉ lệ category gốc, và trong mỗi category lại chia theo tỉ lệ mức độ dễ / trung bình / khó.
-`mcq.jsonl` đã có trong `.gitignore` để không bị đẩy toàn bộ bộ câu hỏi lên GitHub.
+- Lần đầu chạy, script tạo `reviewers.json` với 5 người mẫu (`Người 1`…`Người 5`) và ID ngẫu nhiên. Sửa tên (và ID nếu muốn, ví dụ dùng MSSV), thêm/bớt người, rồi chạy lại `python build_site.py`.
+- Để trống `"id"` thì script tự tạo ID. ID không phân biệt hoa/thường và khoảng trắng.
+- Câu đã giao cho ai được lưu luôn trong `reviewers.json`, nên chạy lại script **không đổi câu** của ai. Chỉ câu chưa có người mới được chia thêm (cho người đang ít câu nhất).
+- Muốn chia lại từ đầu (đổi câu của mọi người): `python build_site.py --reassign`.
+- Đổi số câu Hôn nhân & Gia đình hoặc giới hạn category khác: sửa `CATEGORY_LIMITS` ở đầu `build_site.py`. Khi bớt, script giữ tỉ lệ dễ / trung bình / khó và ưu tiên bỏ những câu chỉ xoay quanh ly hôn, nuôi con, cấp dưỡng.
+- Chọn lại 600 câu từ `mcq.jsonl`: đặt file cạnh script rồi chạy `python build_site.py --reselect`.
 
-## 2. Tạo Google Sheet nhận feedback
-1. Tạo một Google Sheet mới, chọn **Tiện ích mở rộng → Apps Script**.
-2. Xoá code mặc định, dán toàn bộ `apps_script.gs` vào rồi bấm Save.
-   Muốn bắt người review nhập mã thì điền `ACCESS_CODE`.
-3. Chọn **Deploy → New deployment → Web app**:
-   - Execute as: **Me**
-   - Who has access: **Anyone**
+Script in ra bảng tên, ID và số câu của từng người. Gửi riêng ID cho từng người.
+`reviewers.json` đã nằm trong `.gitignore`: giữ file này cẩn thận, mất nó thì không dựng lại được với ID cũ.
 
-   Bấm Deploy, cấp quyền, rồi copy **Web app URL** (kết thúc bằng `/exec`).
-4. Dán URL đó vào `SHEET_API` trong `docs/config.js`.
+## 2. Đưa lên GitHub Pages
+Repo đã có workflow `.github/workflows/pages.yml` đăng thư mục `docs/`.
+1. Commit và push lên nhánh `main` (gồm `docs/site.json` và `docs/r/*.bin`).
+2. Lần đầu: vào **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+3. Chờ workflow **Deploy GitHub Pages** chạy xong. Web ở `https://<user>.github.io/<repo>/`.
 
-Nếu sửa `apps_script.gs` sau khi đã deploy: vào **Deploy → Manage deployments → Edit → Version: New version → Deploy**. URL không đổi.
+Mỗi lần chạy lại `build_site.py` thì commit + push lại `docs/`.
 
-## 3. Đưa lên GitHub Pages
-Repository đã có workflow `.github/workflows/pages.yml`. Chỉ cần:
+## 3. Người review dùng web thế nào
+- Nhập ID → thấy tên mình và các câu được giao.
+- Mỗi issue trong đáp án có một ô. **Ô để trống = issue đúng.** Issue sai thì viết lại issue đúng vào ô. Issue không nên có thì tick **Bỏ issue này**.
+- Thiếu issue thì bấm **+ Thêm issue** (mỗi issue một ô).
+- Bấm **Lưu câu này** sau khi xong mỗi câu (kể cả khi mọi issue đều đúng). Nút **Câu chưa làm tiếp theo** nhảy tới câu chưa lưu.
 
-1. Đẩy code lên nhánh `main`.
-2. Vào repo trên GitHub, chọn **Settings → Pages → Build and deployment**.
-3. Chọn **Source: GitHub Actions**.
-4. Vào **Actions**, chạy hoặc chờ workflow **Deploy GitHub Pages** hoàn tất.
+### Tự lưu file feedback và làm tiếp
+- **Chrome / Edge**: lần bấm Lưu đầu tiên web hỏi chỗ lưu file (`feedback_<tên>.jsonl`). Từ đó file được **ghi đè** sau mỗi câu và định kỳ mỗi `AUTOSAVE_SECONDS` giây (mặc định 60) nếu có thay đổi, gồm cả phần đang gõ dở.
+- **Firefox / Safari** không ghi đè được file: web tự tải file mỗi `FALLBACK_DOWNLOAD_MINUTES` phút (mặc định 5) khi có thay đổi. Khi làm tiếp, mở file mới nhất.
+- Làm tiếp ở máy hoặc trình duyệt khác: đăng nhập rồi bấm **Mở file để làm tiếp** và chọn file feedback. Trên Chrome/Edge, web tiếp tục ghi đè vào chính file đó.
+- Trên cùng một trình duyệt, dữ liệu còn được giữ trong trình duyệt nên tải lại trang không mất gì.
+- File của người khác sẽ bị từ chối khi mở.
 
-Website sẽ chạy tại `https://<user>.github.io/<repo>/`.
-
-## Feedback
-- Mỗi lần bấm "Lưu" thêm một dòng vào sheet `feedback` (giữ lịch sử).
-  Các cột: `ts, reviewer, id, category, level, verdict, issue_marks, suggested_answer, note, expected_answer`.
-- Nút "Tải feedback (.jsonl)" trên web tải bản đã gộp: mỗi người × mỗi câu chỉ giữ lần lưu mới nhất.
-- `verdict` nhận một trong ba giá trị: `correct` (Đúng), `partial` (Đúng một phần), `wrong` (Sai).
-  `issue_marks` có dạng `{"1": "ok", "2": "bad"}`, đánh giá từng issue với câu có nhiều issue.
+## Định dạng feedback
+Mỗi dòng của `feedback_<tên>.jsonl` là một câu:
+```json
+{"reviewer": "Người 1", "id": "1006531", "category": "Criminal", "level": "kho",
+ "done": true, "ts": "2026-11-19T10:00:00.000Z",
+ "issues": [
+   {"no": 1, "original": "...", "text": "", "status": "ok"},
+   {"no": 2, "original": "...", "text": "issue viết lại", "status": "edited"},
+   {"no": 3, "original": "...", "text": "", "status": "removed"}],
+ "added_issues": ["issue còn thiếu"],
+ "final_issues": ["...", "issue viết lại", "issue còn thiếu"],
+ "note": ""}
+```
+- `status`: `ok` (ô trống = đúng), `edited` (đã viết lại), `removed` (bỏ issue).
+- `final_issues`: danh sách issue sau khi sửa, dùng làm đáp án mới.
+- `done: false` là câu đang làm dở, chưa bấm Lưu.
 - `id` là id của câu trong `mcq.jsonl` gốc.
 
-Nếu để trống `SHEET_API`, web vẫn chạy nhưng feedback chỉ lưu trên trình duyệt của từng người. Họ phải bấm "Tải feedback" rồi gửi file lại cho bạn.
+Gộp file của mọi người: nối các file lại (`cat feedback_*.jsonl > all.jsonl`), mỗi người × mỗi câu chỉ có một dòng.
 
 ## Thử trên máy trước khi push
 ```bash
-cd docs && python -m http.server 8000   # mở http://localhost:8000
+python -m http.server 8000 --directory docs   # mở http://localhost:8000
 ```
+Phải mở qua `localhost` hoặc `https` (không mở thẳng file `index.html`), vì trình duyệt chỉ cho giải mã dữ liệu và ghi file trong môi trường an toàn.
