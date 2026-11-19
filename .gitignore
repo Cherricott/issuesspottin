@@ -1,2 +1,4 @@
 mcq.jsonl
 __pycache__/
+# chứa ID (mật khẩu) của người review và cách chia câu: giữ ở máy, không đẩy lên GitHub
+reviewers.json
