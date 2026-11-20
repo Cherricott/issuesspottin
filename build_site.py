@@ -29,7 +29,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 # ======================= CẤU HÌNH (sửa ở đây) =======================
-REVIEWER_QUESTION_COUNTS = (150, 150, 150, 35, 35, 35, 45)
+REVIEWER_QUESTION_COUNTS = (100, 100, 100, 35, 35, 35, 45)
 DEFAULT_REVIEWERS = len(REVIEWER_QUESTION_COUNTS)
 SEED = 42
 N_TOTAL = 600                                  # chỉ dùng với --reselect
@@ -167,8 +167,8 @@ def assign(people: list, questions: list, reassign: bool):
     targets = REVIEWER_QUESTION_COUNTS
     if len(people) != len(targets):
         raise SystemExit(f"Cần {len(targets)} reviewer để khớp cấu hình phân bổ")
-    if sum(targets) != len(questions):
-        raise SystemExit(f"Tổng quota là {sum(targets)} nhưng bộ dữ liệu có {len(questions)} câu")
+    if sum(targets) > len(questions):
+        raise SystemExit(f"Tổng quota là {sum(targets)} nhưng bộ dữ liệu chỉ có {len(questions)} câu")
 
     valid = {q["id"]: q for q in questions}
     owner = {}
@@ -185,7 +185,11 @@ def assign(people: list, questions: list, reassign: bool):
                 owner[qid] = p["name"]
                 kept.append(qid)
         if len(kept) > targets[idx]:
-            raise SystemExit(f"{p['name']} đang có {len(kept)} câu, vượt quota {targets[idx]}; chạy lại với --reassign")
+            # Quota giảm: giữ các câu đầu danh sách (thứ tự người review đang làm), bỏ phần dư.
+            print(f"  ! {p['name']}: {len(kept)} câu > quota {targets[idx]}, giữ {targets[idx]} câu đầu")
+            for qid in kept[targets[idx]:]:
+                del owner[qid]
+            kept = kept[:targets[idx]]
         p["questions"] = kept
 
     rng = random.Random(f"{SEED}-assign-{len(owner)}")
@@ -201,7 +205,7 @@ def assign(people: list, questions: list, reassign: bool):
         counts = [len(p["questions"]) + len(new_for[p["name"]]) for p in people]
         eligible = [i for i, count in enumerate(counts) if count < targets[i]]
         if not eligible:
-            raise SystemExit("Không còn reviewer nào có quota trống")
+            break                          # hết quota: các câu còn lại không giao cho ai
         low = min(counts[i] / targets[i] for i in eligible)
         order = list(range(turn, len(people))) + list(range(turn))
         k = next(i for i in order if i in eligible and counts[i] / targets[i] == low)
@@ -211,7 +215,8 @@ def assign(people: list, questions: list, reassign: bool):
         extra = new_for[p["name"]]
         rng.shuffle(extra)                 # thứ tự hiển thị ngẫu nhiên, nhưng cố định sau khi lưu
         p["questions"].extend(extra)
-    print(f"  Đã phân bổ {len(questions)} câu theo quota: {', '.join(map(str, targets))}")
+    print(f"  Đã phân bổ {sum(len(p['questions']) for p in people)}/{len(questions)} câu theo quota: "
+          f"{', '.join(map(str, targets))}")
 
 
 # ---------------------------------------------------------------- bước 5

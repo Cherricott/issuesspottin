@@ -19,7 +19,7 @@ python build_site.py
 ```
 - Lần đầu chạy, script tạo `reviewers.json` với 7 người mẫu (`Người 1`…`Người 7`) và ID ngẫu nhiên. Sửa tên (và ID nếu muốn, ví dụ dùng MSSV), rồi chạy lại `python build_site.py`.
 - Để trống `"id"` thì script tự tạo ID. ID không phân biệt hoa/thường và khoảng trắng.
-- Quota theo **vị trí** trong `reviewers.json` (không theo tên): người thứ 1–3 mỗi người 150 câu; người thứ 4–6 mỗi người 35 câu; người thứ 7 có 45 câu. Đổi quota ở `REVIEWER_QUESTION_COUNTS` đầu `build_site.py` (tổng phải bằng số câu trong `issue_spotting.jsonl`).
+- Quota theo **vị trí** trong `reviewers.json` (không theo tên): người thứ 1–3 mỗi người 100 câu; người thứ 4–6 mỗi người 35 câu; người thứ 7 có 45 câu (tổng 450, 150 câu còn lại không giao). Đổi quota ở `REVIEWER_QUESTION_COUNTS` đầu `build_site.py` (tổng không được vượt số câu trong `issue_spotting.jsonl`). Giảm quota thì mỗi người giữ các câu đầu danh sách.
 - Đổi tên trong `reviewers.json` rồi chạy `python build_site.py` (không cần `--reassign`): câu của mỗi người giữ nguyên.
 - Câu đã giao được giữ trong `reviewers.json`. Muốn chia lại theo quota từ đầu: `python build_site.py --reassign`.
 
